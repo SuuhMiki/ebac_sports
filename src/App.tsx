@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useSelector, useDispatch } from 'react-redux'
+import { Provider } from 'react-redux'
+
 import Header from './components/Header'
 import Produtos from './containers/Produtos'
-
+import store, { RootState } from './store'
+import { addToCarrinho } from './store/reducers/carrinho'
+import { adicionarFavorito, removerFavorito } from './store/reducers/favoritos'
 import { GlobalStyle } from './styles'
 
 export type Produto = {
@@ -11,31 +16,37 @@ export type Produto = {
   imagem: string
 }
 
-function App() {
+function AppContent() {
   const [produtos, setProdutos] = useState<Produto[]>([])
-  const [carrinho, setCarrinho] = useState<Produto[]>([])
-  const [favoritos, setFavoritos] = useState<Produto[]>([])
+  const dispatch = useDispatch()
+
+  const carrinho = useSelector((state: RootState) => state.carrinho.items)
+  const favoritos = useSelector((state: RootState) => state.favoritos.items)
 
   useEffect(() => {
     fetch('https://ebac-fake-api.vercel.app/api/ebac_sports')
       .then((res) => res.json())
-      .then((res) => setProdutos(res))
+      .then((res: Produto[]) => setProdutos(res))
+      .catch((err) => console.error('Erro ao buscar produtos:', err))
   }, [])
 
   function adicionarAoCarrinho(produto: Produto) {
-    if (carrinho.find((p) => p.id === produto.id)) {
-      alert('Item já adicionado')
+    const jaAdicionado = carrinho.some((p) => p.id === produto.id)
+
+    if (jaAdicionado) {
+      alert('Item já adicionado ao carrinho')
     } else {
-      setCarrinho([...carrinho, produto])
+      dispatch(addToCarrinho(produto))
     }
   }
 
   function favoritar(produto: Produto) {
-    if (favoritos.find((p) => p.id === produto.id)) {
-      const favoritosSemProduto = favoritos.filter((p) => p.id !== produto.id)
-      setFavoritos(favoritosSemProduto)
+    const jaFavoritado = favoritos.some((p) => p.id === produto.id)
+
+    if (jaFavoritado) {
+      dispatch(removerFavorito(produto.id))
     } else {
-      setFavoritos([...favoritos, produto])
+      dispatch(adicionarFavorito(produto))
     }
   }
 
@@ -43,7 +54,7 @@ function App() {
     <>
       <GlobalStyle />
       <div className="container">
-        <Header favoritos={favoritos} itensNoCarrinho={carrinho} />
+        <Header />
         <Produtos
           produtos={produtos}
           favoritos={favoritos}
@@ -52,6 +63,14 @@ function App() {
         />
       </div>
     </>
+  )
+}
+
+function App() {
+  return (
+    <Provider store={store}>
+      <AppContent />
+    </Provider>
   )
 }
 
